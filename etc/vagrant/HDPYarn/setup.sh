@@ -21,6 +21,16 @@ rm hadoop-$VERSION.tar.gz
 mv hadoop-${VERSION} /usr/local/hadoop
 cp -v /vagrant/config/* /usr/local/hadoop/etc/hadoop/
 
+# Installing Spark
+echo "Using Spark Version $SPARK_VERSION"
+
+echo "Downloading Spark"
+wget https://www.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop2.6.tgz
+
+tar -xzf spark-${SPARK_VERSION}-bin-hadoop2.6.tgz
+rm spark-${SPARK_VERSION}-bin-hadoop2.6.tgz
+mv spark-${SPARK_VERSION}-bin-hadoop2.6 /usr/local/spark
+
 # Setting up ssh
 ssh-keygen -t dsa -P '' -f ~/.ssh/id_dsa
 cat ~/.ssh/id_dsa.pub >> ~/.ssh/authorized_keys
@@ -62,4 +72,5 @@ tar -C /usr/local -xzf go1.7.1.linux-amd64.tar.gz
 # sudo -u postgres createuser steam
 
 echo export GOPATH=/home/vagrant/Go >> /home/vagrant/.bashrc
-echo export PATH=$PATH:/usr/local/hadoop/bin:/usr/local/go/bin:$GOPATH/bin >> /home/vagrant/.bashrc
+echo export SPARK_HOME=/usr/local/spark >> /home/vagrant/.bashrc
+echo export PATH=$PATH:/usr/local/hadoop/bin:/usr/local/go/bin:$GOPATH/bin:/usr/local/spark/bin >> /home/vagrant/.bashrc

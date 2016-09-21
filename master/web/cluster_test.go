@@ -5,7 +5,7 @@ import "testing"
 func TestGetClusterDatasets(tt *testing.T) {
 	t := newTest(tt)
 
-	id, err := t.svc.RegisterCluster(t.su, ClusterAddress)
+	id, err := t.svc.RegisterCluster(t.su, ClusterAddress, "")
 	t.nil(err)
 
 	datasets, err := t.svc.GetDatasetsFromCluster(t.su, id)
@@ -18,7 +18,7 @@ func TestGetClusterDatasets(tt *testing.T) {
 func TestGetClusterModels(tt *testing.T) {
 	t := newTest(tt)
 
-	id, err := t.svc.RegisterCluster(t.su, ClusterAddress)
+	id, err := t.svc.RegisterCluster(t.su, ClusterAddress, "")
 	t.nil(err)
 
 	models, err := t.svc.GetModelsFromCluster(t.su, id, h2oFrames[0].name)

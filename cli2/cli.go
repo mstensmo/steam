@@ -67,6 +67,7 @@ Examples:
 func addEngine(c *context) *cobra.Command {
 	var engineName string // No description available
 	var enginePath string // No description available
+	var engineType string // No description available
 
 	cmd := newCmd(c, addEngineHelp, func(c *context, args []string) {
 
@@ -74,6 +75,7 @@ func addEngine(c *context) *cobra.Command {
 		engineId, err := c.remote.AddEngine(
 			engineName, // No description available
 			enginePath, // No description available
+			engineType, // No description available
 		)
 		if err != nil {
 			log.Fatalln(err)
@@ -3652,6 +3654,7 @@ func registerCluster(c *context) *cobra.Command {
 		// Connect to a cluster
 		clusterId, err := c.remote.RegisterCluster(
 			address, // No description available
+			"",
 		)
 		if err != nil {
 			log.Fatalln(err)

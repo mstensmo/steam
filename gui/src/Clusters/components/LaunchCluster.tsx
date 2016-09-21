@@ -38,6 +38,7 @@ export class LaunchCluster extends React.Component<Props & DispatchProps, any> {
     super();
     this.state = {
       memorySizeUnit: 'm',
+      engineType: 'hadoop',
       engineId: null
     };
   }
@@ -54,17 +55,27 @@ export class LaunchCluster extends React.Component<Props & DispatchProps, any> {
     let size = (this.refs.clusterForm.querySelector('input[name="size"]') as HTMLInputElement).value;
     let memory = (this.refs.clusterForm.querySelector('input[name="memory"]') as HTMLInputElement).value;
     let keytab = _.get((this.refs.clusterForm.querySelector('input[name="keytab"]') as HTMLInputElement), 'value', '');
-    this.props.startYarnCluster(clusterName, parseInt(engineId, 10), parseInt(size, 10), memory + this.state.memorySizeUnit, keytab);
+    this.props.startYarnCluster(clusterName,
+      parseInt(engineId, 10),
+      parseInt(size, 10),
+      memory + this.state.memorySizeUnit,
+      keytab);
   }
 
   uploadEngine(event) {
     event.preventDefault();
-    this.props.uploadEngine(this.refs.engine);
+    this.props.uploadEngine(this.refs.engine, this.state.engineType);
   }
 
   onChangeMemory(event) {
     this.setState({
       memorySizeUnit: event.target.value
+    });
+  }
+
+  onChangeEngineType(event) {
+    this.setState({
+      engineType: event.target.value
     });
   }
 
@@ -111,9 +122,15 @@ export class LaunchCluster extends React.Component<Props & DispatchProps, any> {
             </Row>
             <Row>
               <Cell>
-                H2O VERSION
+                ENGINE
               </Cell>
               <Cell>
+                <div>
+                  <select name ="engine-type" onChange={this.onChangeEngineType.bind(this)}>
+                    <option value="hadoop">Hadoop</option>
+                    <option value="spark">Spark</option>
+                  </select>
+                </div>
                 <div className="upload-engine">
                   <input ref="engine" type="file" name="engine"/>
                   <button className="default upload-engine-button" onClick={this.uploadEngine.bind(this)}>Upload Engine</button>

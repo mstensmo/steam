@@ -89,10 +89,11 @@ type IdentityAndRole struct {
 }
 
 type Engine struct {
-	Id       int64
-	Name     string
-	Location string
-	Created  time.Time
+	Id         int64
+	Name       string
+	Location   string
+	EngineType string
+	Created    time.Time
 }
 
 type ClusterType struct {
@@ -101,18 +102,20 @@ type ClusterType struct {
 }
 
 type Cluster struct {
-	Id       int64
-	Name     string
-	TypeId   int64
-	DetailId int64
-	Address  string
-	State    string
-	Created  time.Time
+	Id         int64
+	Name       string
+	TypeId     int64
+	DetailId   int64
+	Address    string
+	Messaging  string
+	State      string
+	Created    time.Time
 }
 
 type YarnCluster struct {
 	Id            int64
 	EngineId      int64
+	EngineType    string
 	Size          int64
 	ApplicationId string
 	Memory        string

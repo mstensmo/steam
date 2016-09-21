@@ -61,7 +61,7 @@ export class Clusters extends React.Component<Props & DispatchProps, any> {
     event.preventDefault();
     let ipAddress = $(event.target).find('input[name="ip-address"]').val();
     let port = $(event.target).find('input[name="port"]').val();
-    this.props.registerCluster(ipAddress + ':' + port);
+    this.props.registerCluster(ipAddress + ':' + port, "");
     this.setState({newClusterRequested: false});
   }
 

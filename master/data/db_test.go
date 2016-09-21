@@ -644,13 +644,13 @@ func TestSecurity(t *testing.T) {
 func TestEngines(t *testing.T) {
 	ds, p := setup(t)
 
-	id1, err := ds.CreateEngine(p, "engine1", "location1")
+	id1, err := ds.CreateEngine(p, "engine1", "location1", "hadoop")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(id1)
 
-	id2, err := ds.CreateEngine(p, "engine2", "location2")
+	id2, err := ds.CreateEngine(p, "engine2", "location2", "spark")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func TestEngines(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if e1.Id != id1 || e1.Name != "engine1" || e1.Location != "location1" {
+	if e1.Id != id1 || e1.Name != "engine1" || e1.Location != "location1" || e1.EngineType != "hadoop" {
 		t.Fatal("wrong engine")
 	}
 
@@ -679,7 +679,7 @@ func TestEngines(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if e2.Id != id2 || e2.Name != "engine2" || e2.Location != "location2" {
+	if e2.Id != id2 || e2.Name != "engine2" || e2.Location != "location2" || e2.EngineType != "spark" {
 		t.Fatal("wrong engine")
 	}
 
@@ -713,13 +713,13 @@ func TestEngines(t *testing.T) {
 func TestExternalClusters(t *testing.T) {
 	ds, p := setup(t)
 
-	id1, err := ds.CreateExternalCluster(p, "cluster1", "address1", "started")
+	id1, err := ds.CreateExternalCluster(p, "cluster1", "address1", "address1", "started")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(id1)
 
-	id2, err := ds.CreateExternalCluster(p, "cluster2", "address2", "started")
+	id2, err := ds.CreateExternalCluster(p, "cluster2", "address2", "address1", "started")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -782,7 +782,7 @@ func TestExternalClusters(t *testing.T) {
 func TestYarnClusters(t *testing.T) {
 	ds, p := setup(t)
 
-	eid, err := ds.CreateEngine(p, "engine", "location")
+	eid, err := ds.CreateEngine(p, "engine", "location", "hadoop")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -790,6 +790,7 @@ func TestYarnClusters(t *testing.T) {
 	id1, err := ds.CreateYarnCluster(p, "cluster1", "address1", "started", YarnCluster{
 		0,
 		eid,
+		"hadoop",
 		4,
 		"applicationId1",
 		"memory1",
@@ -804,6 +805,7 @@ func TestYarnClusters(t *testing.T) {
 	id2, err := ds.CreateYarnCluster(p, "cluster2", "address2", "started", YarnCluster{
 		0,
 		eid,
+		"hadoop",
 		4,
 		"applicationId2",
 		"memory2",

@@ -27,7 +27,7 @@ func registerCluster(c *context) *cobra.Command {
 
 		// -- Execution --
 
-		clusterId, err := c.remote.RegisterCluster(clusterAddress)
+		clusterId, err := c.remote.RegisterCluster(clusterAddress, "")
 		if err != nil {
 			log.Fatalln(err) //FIXME format error
 		}

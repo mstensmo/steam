@@ -68,7 +68,7 @@ func (s *Service) GetConfig(pz az.Principal) (*web.Config, error) {
 	return &web.Config{s.kerberosEnabled}, nil
 }
 
-func (s *Service) RegisterCluster(pz az.Principal, address string) (int64, error) {
+func (s *Service) RegisterCluster(pz az.Principal, address string, messaging string) (int64, error) {
 
 	if err := pz.CheckPermission(s.ds.Permissions.ManageCluster); err != nil {
 		return 0, err
@@ -89,7 +89,7 @@ func (s *Service) RegisterCluster(pz az.Principal, address string) (int64, error
 		return 0, fmt.Errorf("A cluster with the address %s is already registered", address)
 	}
 
-	clusterId, err := s.ds.CreateExternalCluster(pz, cloud.CloudName, address, data.StartedState)
+	clusterId, err := s.ds.CreateExternalCluster(pz, cloud.CloudName, address, messaging, data.StartedState)
 	if err != nil {
 		return 0, err
 	}
@@ -145,7 +145,8 @@ func (s *Service) StartClusterOnYarn(pz az.Principal, clusterName string, engine
 	// FIXME check if file exists
 	keytabPath := path.Join(s.workingDir, fs.KTDir, keytab)
 
-	appId, address, out, err := yarn.StartCloud(size, s.kerberosEnabled, memory, clusterName, engine.Location, identity.Name, keytabPath)
+	appId, address, messaging, out, err :=
+		yarn.StartCloud(size, s.kerberosEnabled, engine, memory, clusterName, identity.Name, keytabPath)
 	if err != nil {
 		return 0, err
 	}
@@ -153,6 +154,7 @@ func (s *Service) StartClusterOnYarn(pz az.Principal, clusterName string, engine
 	yarnCluster := data.YarnCluster{
 		0,
 		engineId,
+		engine.EngineType,
 		int64(size),
 		appId,
 		memory,
@@ -160,7 +162,9 @@ func (s *Service) StartClusterOnYarn(pz az.Principal, clusterName string, engine
 		out,
 	}
 
-	clusterId, err := s.ds.CreateYarnCluster(pz, clusterName, address, data.StartedState, yarnCluster)
+	clusterId, err := s.ds.CreateYarnCluster(
+		pz, clusterName, address,
+		messaging, data.StartedState, yarnCluster)
 	if err != nil {
 		return 0, err
 	}
@@ -200,8 +204,9 @@ func (s *Service) StopClusterOnYarn(pz az.Principal, clusterId int64, keytab str
 
 	// FIXME check if file exists
 	keytabPath := path.Join(s.workingDir, fs.KTDir, keytab)
-	if err := yarn.StopCloud(s.kerberosEnabled, cluster.Name, yarnCluster.ApplicationId,
-		yarnCluster.OutputDir, identity.Name, keytabPath); err != nil {
+	if err := yarn.StopCloud(s.kerberosEnabled, cluster.Name, cluster.Messaging,
+		yarnCluster.ApplicationId, yarnCluster.EngineType, yarnCluster.OutputDir, identity.Name,
+		keytabPath); err != nil {
 		return err
 	}
 
@@ -1553,12 +1558,12 @@ func (s *Service) DeleteService(pz az.Principal, serviceId int64) error {
 }
 
 // FIXME this should not be here - not an client-facing API
-func (s *Service) AddEngine(pz az.Principal, engineName, enginePath string) (int64, error) {
+func (s *Service) AddEngine(pz az.Principal, engineName, enginePath, engineType string) (int64, error) {
 	if err := pz.CheckPermission(s.ds.Permissions.ManageEngine); err != nil {
 		return 0, err
 	}
 
-	return s.ds.CreateEngine(pz, engineName, enginePath)
+	return s.ds.CreateEngine(pz, engineName, enginePath, engineType)
 }
 
 func (s *Service) GetEngine(pz az.Principal, engineId int64) (*web.Engine, error) {
@@ -2312,6 +2317,7 @@ func toCluster(c data.Cluster) *web.Cluster {
 		c.TypeId,
 		c.DetailId,
 		c.Address,
+		c.Messaging,
 		c.State,
 		toTimestamp(c.Created),
 	}
@@ -2321,6 +2327,7 @@ func toYarnCluster(c data.YarnCluster) *web.YarnCluster {
 	return &web.YarnCluster{
 		c.Id,
 		c.EngineId,
+		c.EngineType,
 		int(c.Size), // FIXME change db field to int
 		c.ApplicationId,
 		c.Memory,
@@ -2483,6 +2490,7 @@ func toEngine(e data.Engine) *web.Engine {
 		e.Id,
 		e.Name,
 		e.Location,
+		e.EngineType,
 		toTimestamp(e.Created),
 	}
 }

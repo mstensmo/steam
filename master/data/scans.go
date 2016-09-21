@@ -388,6 +388,7 @@ func ScanEngine(r *sql.Row) (Engine, error) {
 		&s.Id,
 		&s.Name,
 		&s.Location,
+		&s.EngineType,
 		&s.Created,
 	); err != nil {
 		return Engine{}, err
@@ -404,6 +405,7 @@ func ScanEngines(rs *sql.Rows) ([]Engine, error) {
 			&s.Id,
 			&s.Name,
 			&s.Location,
+			&s.EngineType,
 			&s.Created,
 		); err != nil {
 			return nil, err
@@ -454,6 +456,7 @@ func ScanCluster(r *sql.Row) (Cluster, error) {
 		&s.TypeId,
 		&s.DetailId,
 		&s.Address,
+		&s.Messaging,
 		&s.State,
 		&s.Created,
 	); err != nil {
@@ -473,6 +476,7 @@ func ScanClusters(rs *sql.Rows) ([]Cluster, error) {
 			&s.TypeId,
 			&s.DetailId,
 			&s.Address,
+			&s.Messaging,
 			&s.State,
 			&s.Created,
 		); err != nil {
@@ -491,6 +495,7 @@ func ScanYarnCluster(r *sql.Row) (YarnCluster, error) {
 	if err := r.Scan(
 		&s.Id,
 		&s.EngineId,
+		&s.EngineType,
 		&s.Size,
 		&s.ApplicationId,
 		&s.Memory,
@@ -510,6 +515,7 @@ func ScanYarnClusters(rs *sql.Rows) ([]YarnCluster, error) {
 		if err = rs.Scan(
 			&s.Id,
 			&s.EngineId,
+			&s.EngineType,
 			&s.Size,
 			&s.ApplicationId,
 			&s.Memory,

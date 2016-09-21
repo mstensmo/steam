@@ -2236,16 +2236,16 @@ func deletePrivilegesFor(tx *sql.Tx, identityType string, identityId int64) erro
 
 // --- Engine ---
 
-func (ds *Datastore) CreateEngine(pz az.Principal, name, location string) (int64, error) {
+func (ds *Datastore) CreateEngine(pz az.Principal, name, location, engineType string) (int64, error) {
 	var id int64
 	err := ds.exec(func(tx *sql.Tx) error {
 		res, err := tx.Exec(`
 			INSERT INTO
 				engine
-				(name, location, created)
+				(name, location, engine_type, created)
 			VALUES
-				($1,   $2,       datetime('now'))
-			`, name, location)
+				($1,   $2,   $3,      datetime('now'))
+			`, name, location, engineType)
 		if err != nil {
 			return err
 		}
@@ -2267,6 +2267,7 @@ func (ds *Datastore) CreateEngine(pz az.Principal, name, location string) (int64
 		return ds.audit(pz, tx, CreateOp, ds.EntityTypes.Engine, id, metadata{
 			"name":     name,
 			"location": location,
+			"type":     engineType,
 		})
 
 	})
@@ -2276,7 +2277,7 @@ func (ds *Datastore) CreateEngine(pz az.Principal, name, location string) (int64
 func (ds *Datastore) ReadEngines(pz az.Principal) ([]Engine, error) {
 	rows, err := ds.db.Query(`
 		SELECT
-			id, name, location, created
+			id, name, location, engine_type, created
 		FROM
 			engine
 		WHERE
@@ -2313,7 +2314,7 @@ func (ds *Datastore) ReadEngine(pz az.Principal, engineId int64) (Engine, error)
 
 	row := ds.db.QueryRow(`
 		SELECT
-			id, name, location, created
+			id, name, location, engine_type, created
 		FROM
 			engine
 		WHERE
@@ -2345,16 +2346,16 @@ func (ds *Datastore) DeleteEngine(pz az.Principal, engineId int64) error {
 
 // --- Cluster ---
 
-func (ds *Datastore) CreateExternalCluster(pz az.Principal, name, address, state string) (int64, error) {
+func (ds *Datastore) CreateExternalCluster(pz az.Principal, name, address, messaging, state string)(int64, error) {
 	var id int64
 	err := ds.exec(func(tx *sql.Tx) error {
 		res, err := tx.Exec(`
 			INSERT INTO
 				cluster
-				(name, type_id, detail_id, address, state, created)
+				(name, type_id, detail_id, address, messaging, state, created)
 			VALUES
-				($1,   $2,      0,         $3,      $4,    datetime('now'))
-			`, name, ds.ClusterTypes.External, address, state)
+				($1,   $2,      0,         $3,      $4,      $5,    datetime('now'))
+			`, name, ds.ClusterTypes.External, address, messaging, state)
 		if err != nil {
 			return err
 		}
@@ -2383,7 +2384,7 @@ func (ds *Datastore) CreateExternalCluster(pz az.Principal, name, address, state
 	return id, err
 }
 
-func (ds *Datastore) CreateYarnCluster(pz az.Principal, name, address, state string, cluster YarnCluster) (int64, error) {
+func (ds *Datastore) CreateYarnCluster(pz az.Principal, name, address, messaging, state string, cluster YarnCluster) (int64, error) {
 	var clusterId int64
 	err := ds.exec(func(tx *sql.Tx) error {
 		var yarnClusterId int64
@@ -2412,10 +2413,10 @@ func (ds *Datastore) CreateYarnCluster(pz az.Principal, name, address, state str
 		res, err := tx.Exec(`
 			INSERT INTO
 				cluster
-				(name, type_id, detail_id, address, state, created)
+				(name, type_id, detail_id, address, messaging, state, created)
 			VALUES
-				($1,   $2,      $3,        $4,      $5,    datetime('now'))
-			`, name, ds.ClusterTypes.Yarn, yarnClusterId, address, state)
+				($1,   $2,      $3,        $4,      $5,      $6,    datetime('now'))
+			`, name, ds.ClusterTypes.Yarn, yarnClusterId, address, messaging, state)
 		if err != nil {
 			return err
 		}
@@ -2457,7 +2458,7 @@ func (ds *Datastore) ReadClusterTypes(pz az.Principal) []ClusterType {
 func (ds *Datastore) ReadClusters(pz az.Principal, offset, limit int64) ([]Cluster, error) {
 	rows, err := ds.db.Query(`
 		SELECT
-			id, name, type_id, detail_id, address, state, created
+			id, name, type_id, detail_id, address, messaging, state, created
 		FROM
 			cluster
 		WHERE
@@ -2496,7 +2497,7 @@ func (ds *Datastore) ReadCluster(pz az.Principal, clusterId int64) (Cluster, err
 	}
 	row := ds.db.QueryRow(`
 		SELECT
-			id, name, type_id, detail_id, address, state, created
+			id, name, type_id, detail_id, address, messaging, state, created
 		FROM
 			cluster
 		WHERE
@@ -2510,7 +2511,7 @@ func (ds *Datastore) ReadClusterByAddress(pz az.Principal, address string) (Clus
 	var cluster Cluster
 	rows, err := ds.db.Query(`
 		SELECT
-			id, name, type_id, detail_id, address, state, created
+			id, name, type_id, detail_id, address, messaging, state, created
 		FROM
 			cluster
 		WHERE
@@ -2529,7 +2530,7 @@ func (ds *Datastore) ReadClusterByName(pz az.Principal, name string) (Cluster, b
 	var cluster Cluster
 	rows, err := ds.db.Query(`
 		SELECT
-			id, name, type_id, detail_id, address, state, created
+			id, name, type_id, detail_id, address, messaging, state, created
 		FROM
 			cluster
 		WHERE
@@ -2566,13 +2567,15 @@ func (ds *Datastore) ReadYarnCluster(pz az.Principal, clusterId int64) (YarnClus
 
 	row := ds.db.QueryRow(`
 		SELECT
-			y.id, y.engine_id, y.size, y.application_id, y.memory, y.username, y.output_dir
+			y.id, y.engine_id, e.engine_type, y.size, y.application_id, y.memory, y.username, y.output_dir
 		FROM
 			cluster c,
-			cluster_yarn y
+			cluster_yarn y,
+			engine e
 		WHERE
 			c.id = $1 AND
-			c.detail_id = y.id
+			c.detail_id = y.id AND
+			e.id = y.engine_id
 		`, clusterId)
 
 	return ScanYarnCluster(row)

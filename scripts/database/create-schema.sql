@@ -142,6 +142,7 @@ CREATE TABLE cluster (
     type_id integer NOT NULL,
     detail_id integer NOT NULL,
     address text NOT NULL,
+    messaging text NOT NULL,
     state job_state NOT NULL,
     created datetime NOT NULL,
 
@@ -348,6 +349,7 @@ CREATE TABLE engine (
     id integer NOT NULL,
     name text NOT NULL,
     location text NOT NULL,
+    engine_type text NOT NULL,
     created datetime NOT NULL,
 
     PRIMARY KEY (id)

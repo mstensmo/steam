@@ -20,8 +20,9 @@ Start a 4-node H2O 3.2.0.9 cluster
 
 func startCluster(c *context) *cobra.Command {
 	var (
-		size   int
-		memory string
+		size       int
+		memory     string
+		engineType string
 	)
 
 	cmd := newCmd(c, startClusterHelp, func(c *context, args []string) {
@@ -38,7 +39,13 @@ func startCluster(c *context) *cobra.Command {
 		// --- add additional args here ---
 
 		log.Println("Attempting to start cluster...")
-		clusterId, err := c.remote.StartYarnCluster(clusterName, engineId, size, memory, "")
+		clusterId, err := c.remote.StartYarnCluster(
+			clusterName,
+			engineId,
+			size,
+			memory,
+			engineType,
+			"")
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -69,6 +76,7 @@ func startCluster(c *context) *cobra.Command {
 
 	cmd.Flags().IntVarP(&size, "size", "n", 1, "The number of nodes to provision.")
 	cmd.Flags().StringVarP(&memory, "memory", "m", "10g", "The max amount of memory to use per node.")
+	cmd.Flags().StringVarP(&engineType, "engineType", "e", "hadoop", "The type of the engine.")
 
 	return cmd
 }

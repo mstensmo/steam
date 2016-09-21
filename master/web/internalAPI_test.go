@@ -75,7 +75,7 @@ func TestExternalClusterCRUD(tt *testing.T) {
 
 	// -- C --
 
-	id, err := t.svc.RegisterCluster(t.su, ClusterAddress)
+	id, err := t.svc.RegisterCluster(t.su, ClusterAddress, "")
 	t.nil(err)
 
 	// -- R --

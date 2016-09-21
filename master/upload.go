@@ -130,14 +130,15 @@ func (s *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case fs.KindEngine:
 		defer os.Remove(dstPath)
 
-		if err := s.handleEngine(w, pz, fileBaseName, dstDir, dstPath); err != nil {
+		// TODO: read in engine type from the UI
+		if err := s.handleEngine(w, pz, fileBaseName, dstDir, dstPath, r.FormValue("engineType")); err != nil {
 			log.Println("Failed saving engine to disk:", err)
 			return
 		}
 	}
 }
 
-func (s *UploadHandler) handleEngine(w http.ResponseWriter, pz az.Principal, fileName, fileDir, filePath string) error {
+func (s *UploadHandler) handleEngine(w http.ResponseWriter, pz az.Principal, fileName, fileDir, filePath, engineType string) error {
 	// Open zip file and defer close
 	r, err := zip.OpenReader(filePath)
 	if err != nil {
@@ -146,10 +147,10 @@ func (s *UploadHandler) handleEngine(w http.ResponseWriter, pz az.Principal, fil
 	}
 	defer r.Close()
 
-	// Search zipFile for h2o.jar or h2odriver.jar
+	// Search zipFile for *.jar
 	var rc io.ReadCloser
 	for i, f := range r.File {
-		if path.Base(f.Name) == "h2o.jar" || path.Base(f.Name) == "h2odriver.jar" {
+		if strings.Contains(path.Base(f.Name), ".jar") {
 			var err error
 			rc, err = f.Open()
 			if err != nil {
@@ -182,7 +183,7 @@ func (s *UploadHandler) handleEngine(w http.ResponseWriter, pz az.Principal, fil
 	}
 
 	// Add Engine to datastore
-	if _, err := s.webService.AddEngine(pz, dstBase, dstPath); err != nil {
+	if _, err := s.webService.AddEngine(pz, dstBase, dstPath, engineType); err != nil {
 		http.Error(w, fmt.Sprintf("Error saving engine to datastore: %v", err), http.StatusInternalServerError)
 		return errors.Wrap(err, "failed saving engine to datastore")
 	}

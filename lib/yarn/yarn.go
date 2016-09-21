@@ -6,17 +6,19 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"os/exec"
 	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/pkg/errors"
+	"github.com/h2oai/steamY/master/data"
+	"github.com/h2oai/steamY/lib/h2ocluster"
 )
+
+var cm = h2ocluster.NewClusterManager()
 
 func kInit(username, keytab string, uid, gid uint32) error {
 	cmd := exec.Command("kinit", username, "-k", "-t", keytab)
@@ -38,16 +40,6 @@ func kDest(uid, gid uint32) {
 	if err := cmd.Run(); err != nil {
 		panic(fmt.Sprintf("failed executing kdestroy: %v", err))
 	}
-}
-
-func randStr(strlen int) string {
-	rand.Seed(time.Now().UTC().UnixNano())
-	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-	r := make([]byte, strlen)
-	for i := 0; i < strlen; i++ {
-		r[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(r)
 }
 
 func cleanDir(dir string, uid, gid uint32) {
@@ -151,63 +143,92 @@ func yarnCommand(uid, gid uint32, name, username string, args ...string) (string
 	return appID, address, nil
 }
 
+func runDriver(name string, mem string, size int,
+		uid, gid uint32, engine data.Engine) (string, string, string, string, error) {
+	reply, err := cm.Launch(
+		name, engine, uid, gid,
+		"-mem", mem,
+		"-size", strconv.Itoa(size))
+	if err != nil {
+		return "", "", "", "", errors.Wrap(err, "failed starting cloud")
+	}
+	out := reply["out"]
+	if out == nil {
+		out = ""
+	}
+	return reply["id"].(string), reply["ip"].(string),
+		reply["messaging"].(string), out.(string), nil
+}
+
 // StartCloud starts a yarn cloud by shelling out to hadoop
 //
 // This process needs to store the job-ID to kill the process in the future
-func StartCloud(size int, kerberos bool, mem, name, enginePath, username, keytab string) (string, string, string, error) {
+func StartCloud(size int, kerberos bool,
+		engine data.Engine, mem,
+		name, username, keytab string) (string, string, string, string, error) {
 	// Get user information for Kerberos and Yarn reasons
 	uid, gid, err := getUser(username)
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "failed getting user")
+		return "", "", "", "", errors.Wrap(err, "failed getting user")
 	}
 
 	// If kerberos enabled, initialize and defer destroy
 	if kerberos {
 		if err := kInit(username, keytab, uid, gid); err != nil {
-			return "", "", "", errors.Wrap(err, "failed initializing kerberos")
+			return "", "", "", "", errors.Wrap(err, "failed initializing kerberos")
 		}
 		defer kDest(uid, gid)
 	}
 
-	// Randomize outfile name
-	out := "steam/" + name + "_" + randStr(5) + "_out"
+	if engine.EngineType == "hadoop" {
+		// Randomize outfile name
+		out := "steam/" + name + "_" + h2ocluster.RandStr(5) + "_out"
 
-	cmdArgs := []string{
-		"jar", enginePath,
-		"-jobname", "STEAM_" + name,
-		"-n", strconv.Itoa(size),
-		"-mapperXmx", mem,
-		"-output", out,
-		"-disown",
-	}
-	appID, address, err := yarnCommand(uid, gid, name, username, cmdArgs...)
-	if err != nil {
-		cleanDir(out, uid, gid)
-		return "", "", "", errors.Wrap(err, "failed executing command")
+		cmdArgs := []string{
+			"jar", engine.Location,
+			"-jobname", "STEAM_" + name,
+			"-n", strconv.Itoa(size),
+			"-mapperXmx", mem,
+			"-output", out,
+			"-disown",
+		}
+		appID, address, err := yarnCommand(uid, gid, name, username, cmdArgs...)
+		if err != nil {
+			cleanDir(out, uid, gid)
+			return "", "", "", "", errors.Wrap(err, "failed executing command")
+		}
+		return appID, address, "", out, nil
+	} else if engine.EngineType == "spark" {
+		return runDriver(name, mem, size, uid, gid, engine)
 	}
 
-	return appID, address, out, nil
+	return "", "", "", "", errors.New("Not supported engine type [" + engine.EngineType + "]")
 }
 
 // StopCloud kills a hadoop cloud by shelling out a command based on the job-ID
-func StopCloud(kerberos bool, name, id, outdir, username, keytab string) error {
-	uid, gid, err := getUser(username)
-	if err != nil {
-		return errors.Wrap(err, "failed getting user")
-	}
-
-	// If kerberos enabled, initialize and defer destroy
-	if kerberos {
-		if err := kInit(username, keytab, uid, gid); err != nil {
-			return errors.Wrap(err, "failed initializing kerberos")
+func StopCloud(kerberos bool, name, messaging, id, engineType, outdir, username, keytab string) error {
+	if engineType == "hadoop" {
+		uid, gid, err := getUser(username)
+		if err != nil {
+			return errors.Wrap(err, "failed getting user")
 		}
-		defer kDest(uid, gid)
+
+		// If kerberos enabled, initialize and defer destroy
+		if kerberos {
+			if err := kInit(username, keytab, uid, gid); err != nil {
+				return errors.Wrap(err, "failed initializing kerberos")
+			}
+			defer kDest(uid, gid)
+		}
+
+		if _, _, err := yarnCommand(uid, gid, name, username, "job", "-kill", "job_" + id); err != nil {
+			return errors.Wrap(err, "failed executing command")
+		}
+		cleanDir(outdir, uid, gid)
+		return nil
+	} else if engineType == "spark" {
+		return h2ocluster.Stop(messaging)
 	}
 
-	if _, _, err := yarnCommand(uid, gid, name, username, "job", "-kill", "job_"+id); err != nil {
-		return errors.Wrap(err, "failed executing command")
-	}
-
-	cleanDir(outdir, uid, gid)
-	return nil
+	return errors.New("Not supported engine type [" + engineType + "]")
 }

@@ -11,7 +11,7 @@ Vagrant.configure(2) do |config|
     
   config.vm.provision :shell, 
     path:"setup.sh",
-    env: {VERSION: "2.6.4"},
+    env: {VERSION: "2.6.4", SPARK_VERSION: "1.6.2", YARN_CONF_DIR: "/usr/local/hadoop/etc/hadoop/"},
     privileged: true
 
   config.vm.network "forwarded_port", guest: 8088, host: 8088 # Yarn App Manager Default

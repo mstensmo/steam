@@ -66,7 +66,7 @@ export function uploadEngineCompleted(response) {
   };
 }
 
-export function uploadEngine(file) {
+export function uploadEngine(file, engineType) {
   if (!file) {
     openNotification('error', 'No engine file selected.', null);
   }
@@ -75,6 +75,7 @@ export function uploadEngine(file) {
     dispatch(openNotification('info', 'Uploading engine...', null));
     let data = new FormData();
     data.append('file', file.files[0]);
+    data.append('engineType', engineType);
     fetch(`/upload?type=engine`, {
       credentials: 'include',
       method: 'post',

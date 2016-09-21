@@ -11,7 +11,7 @@ func TestServiceCRUD(tt *testing.T) {
 
 	projectId, err := t.svc.CreateProject(t.su, "project1", "test project", "")
 	t.nil(err)
-	clusterId, err := t.svc.RegisterCluster(t.su, ClusterAddress)
+	clusterId, err := t.svc.RegisterCluster(t.su, ClusterAddress, "")
 	t.nil(err)
 	modelId, err := t.svc.ImportModelFromCluster(t.su, clusterId, projectId, h2oModels[0].name, "")
 	t.nil(err)

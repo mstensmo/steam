@@ -46,6 +46,7 @@ type Cluster struct {
 	TypeId    int64  `json:"type_id"`
 	DetailId  int64  `json:"detail_id"`
 	Address   string `json:"address"`
+	Messaging string `json:"Messaging"`
 	State     string `json:"state"`
 	CreatedAt int64  `json:"created_at"`
 }
@@ -89,10 +90,11 @@ type Datasource struct {
 }
 
 type Engine struct {
-	Id        int64  `json:"id"`
-	Name      string `json:"name"`
-	Location  string `json:"location"`
-	CreatedAt int64  `json:"created_at"`
+	Id         int64  `json:"id"`
+	Name       string `json:"name"`
+	Location   string `json:"location"`
+	EngineType string `json:"engine_type"`
+	CreatedAt  int64  `json:"created_at"`
 }
 
 type EntityHistory struct {
@@ -256,6 +258,7 @@ type Workgroup struct {
 type YarnCluster struct {
 	Id            int64  `json:"id"`
 	EngineId      int64  `json:"engine_id"`
+	EngineType    string `json:"engine_type"`
 	Size          int    `json:"size"`
 	ApplicationId string `json:"application_id"`
 	Memory        string `json:"memory"`
@@ -270,7 +273,7 @@ type Az interface {
 type Service interface {
 	PingServer(pz az.Principal, input string) (string, error)
 	GetConfig(pz az.Principal) (*Config, error)
-	RegisterCluster(pz az.Principal, address string) (int64, error)
+	RegisterCluster(pz az.Principal, address, messaging string) (int64, error)
 	UnregisterCluster(pz az.Principal, clusterId int64) error
 	StartClusterOnYarn(pz az.Principal, clusterName string, engineId int64, size int, memory string, keytab string) (int64, error)
 	StopClusterOnYarn(pz az.Principal, clusterId int64, keytab string) error
@@ -327,7 +330,7 @@ type Service interface {
 	GetServicesForProject(pz az.Principal, projectId int64, offset int64, limit int64) ([]*ScoringService, error)
 	GetServicesForModel(pz az.Principal, modelId int64, offset int64, limit int64) ([]*ScoringService, error)
 	DeleteService(pz az.Principal, serviceId int64) error
-	AddEngine(pz az.Principal, engineName string, enginePath string) (int64, error)
+	AddEngine(pz az.Principal, engineName string, enginePath string, engineType string) (int64, error)
 	GetEngine(pz az.Principal, engineId int64) (*Engine, error)
 	GetEngines(pz az.Principal) ([]*Engine, error)
 	DeleteEngine(pz az.Principal, engineId int64) error
@@ -398,7 +401,8 @@ type GetConfigOut struct {
 }
 
 type RegisterClusterIn struct {
-	Address string `json:"address"`
+	Address   string `json:"address"`
+	Messaging string `json:"messaging"`
 }
 
 type RegisterClusterOut struct {
@@ -906,6 +910,7 @@ type DeleteServiceOut struct {
 type AddEngineIn struct {
 	EngineName string `json:"engine_name"`
 	EnginePath string `json:"engine_path"`
+	EngineType string `json:"engine_type"`
 }
 
 type AddEngineOut struct {
@@ -1367,8 +1372,8 @@ func (this *Remote) GetConfig() (*Config, error) {
 	return out.Config, nil
 }
 
-func (this *Remote) RegisterCluster(address string) (int64, error) {
-	in := RegisterClusterIn{address}
+func (this *Remote) RegisterCluster(address string, messaging string) (int64, error) {
+	in := RegisterClusterIn{address, messaging}
 	var out RegisterClusterOut
 	err := this.Proc.Call("RegisterCluster", &in, &out)
 	if err != nil {
@@ -1937,8 +1942,8 @@ func (this *Remote) DeleteService(serviceId int64) error {
 	return nil
 }
 
-func (this *Remote) AddEngine(engineName string, enginePath string) (int64, error) {
-	in := AddEngineIn{engineName, enginePath}
+func (this *Remote) AddEngine(engineName string, enginePath string, engineType string) (int64, error) {
+	in := AddEngineIn{engineName, enginePath, engineType}
 	var out AddEngineOut
 	err := this.Proc.Call("AddEngine", &in, &out)
 	if err != nil {
@@ -2551,7 +2556,7 @@ func (this *Impl) RegisterCluster(r *http.Request, in *RegisterClusterIn, out *R
 		log.Println(guid, "REQ", pz, name, string(req))
 	}
 
-	val0, err := this.Service.RegisterCluster(pz, in.Address)
+	val0, err := this.Service.RegisterCluster(pz, in.Address, in.Messaging)
 	if err != nil {
 		log.Println(guid, "ERR", pz, name, err)
 		return err
@@ -4576,7 +4581,7 @@ func (this *Impl) AddEngine(r *http.Request, in *AddEngineIn, out *AddEngineOut)
 		log.Println(guid, "REQ", pz, name, string(req))
 	}
 
-	val0, err := this.Service.AddEngine(pz, in.EngineName, in.EnginePath)
+	val0, err := this.Service.AddEngine(pz, in.EngineName, in.EnginePath, in.EngineType)
 	if err != nil {
 		log.Println(guid, "ERR", pz, name, err)
 		return err
